@@ -46,11 +46,19 @@ Run the "Start pet coding session" command (`vscode-pets.start`) to see a cat in
 
 [Now checkout the documentation to see what else is possible!](https://tonybaloney.github.io/vscode-pets)
 
+## Translation
+
+Visit the [Crowdin Project](https://crowdin.com/project/vscode-pets) in case you'd like to help with the translations. It will be synced automatically to the repository. You can also request a new language in the [Discussions](https://crowdin.com/project/vscode-pets/discussions) section.
+
 ## Credits
 
-The cat and dog media assets for this extension were licensed from itch.io.
+The cat animations were designed by [seethingswarm](https://seethingswarm.itch.io/catset). The dog media assets for this extension were designed by [NVPH Studio](https://nvph-studio.itch.io/dog-animation-4-different-dogs). 
+
+The forest theme was designed by [edermunizz](https://edermunizz.itch.io/free-pixel-art-forest). The castle assets were created using artwork by [GuttyKreum](https://guttykreum.itch.io/gothic-castle-game-assets).
 
 [Marc Duiker](https://twitter.com/marcduiker) created the Clippy, Rocky, Zappy, rubber duck, snake, cockatiel, Ferris the crab, and Mod the dotnet bot media assets.
+
+[Elthen](https://twitter.com/pixelthen) created the fox media assets.
 
 [Karen Rustad Tölva](https://www.aldeka.net) designed the original concept of Ferris the crab.
 

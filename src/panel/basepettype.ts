@@ -1,4 +1,4 @@
-import { PetSize, PetSpeed } from '../common/types';
+import { PetColor, PetSize, PetSpeed } from '../common/types';
 import { IPetType } from './states';
 import { ISequenceTree } from './sequences';
 import {
@@ -22,6 +22,7 @@ export abstract class BasePetType implements IPetType {
         startingState: States.sitIdle,
         sequenceStates: [],
     };
+    static possibleColors: PetColor[];
     currentState: IState;
     currentStateEnum: States;
     holdState: IState | undefined;
@@ -107,6 +108,8 @@ export abstract class BasePetType implements IPetType {
     calculateSpriteWidth(size: PetSize): number {
         if (size === PetSize.nano) {
             return 30;
+        } else if (size === PetSize.small) {
+            return 40;
         } else if (size === PetSize.medium) {
             return 55;
         } else if (size === PetSize.large) {

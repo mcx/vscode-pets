@@ -1,4 +1,3 @@
-import * as path from 'path';
 import * as vscode from 'vscode';
 import { ColorThemeKind } from 'vscode';
 import {
@@ -15,6 +14,7 @@ import {
 } from '../common/types';
 import { randomName } from '../common/names';
 import * as localize from '../common/localize';
+import { availableColors, normalizeColor } from '../panel/pets';
 
 const EXTRA_PETS_KEY = 'vscode-pets.extra-pets';
 const EXTRA_PETS_KEY_TYPES = EXTRA_PETS_KEY + '.types';
@@ -286,7 +286,6 @@ export function activate(context: vscode.ExtensionContext) {
                 const spec = PetSpecification.fromConfiguration();
                 PetPanel.createOrShow(
                     context.extensionUri,
-                    context.extensionPath,
                     spec.color,
                     spec.type,
                     spec.size,
@@ -341,7 +340,6 @@ export function activate(context: vscode.ExtensionContext) {
     const spec = PetSpecification.fromConfiguration();
     webviewViewProvider = new PetWebviewViewProvider(
         context.extensionUri,
-        context.extensionPath,
         spec.color,
         spec.type,
         spec.size,
@@ -394,6 +392,103 @@ export function activate(context: vscode.ExtensionContext) {
     );
 
     context.subscriptions.push(
+        vscode.commands.registerCommand(
+            'vscode-pets.export-pet-list',
+            async () => {
+                const pets = PetSpecification.collectionFromMemento(
+                    context,
+                    getConfiguredSize(),
+                );
+                const petJson = JSON.stringify(pets, null, 2);
+                const fileName = `pets-${Date.now()}.json`;
+                if (!vscode.workspace.workspaceFolders) {
+                    vscode.window.showErrorMessage(
+                        vscode.l10n.t(
+                            'You must have a folder or workspace open to export pets.',
+                        ),
+                    );
+                    return;
+                }
+                const filePath = vscode.Uri.joinPath(
+                    vscode.workspace.workspaceFolders[0].uri,
+                    fileName,
+                );
+                const newUri = vscode.Uri.file(fileName).with({
+                    scheme: 'untitled',
+                    path: filePath.fsPath,
+                });
+                vscode.workspace.openTextDocument(newUri).then((doc) => {
+                    vscode.window.showTextDocument(doc).then((editor) => {
+                        editor.edit((edit) => {
+                            edit.insert(new vscode.Position(0, 0), petJson);
+                        });
+                    });
+                });
+            },
+        ),
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            'vscode-pets.import-pet-list',
+            async () => {
+                const options: vscode.OpenDialogOptions = {
+                    canSelectMany: false,
+                    openLabel: 'Open pets.json',
+                    filters: {
+                        json: ['json'],
+                    },
+                };
+                const fileUri = await vscode.window.showOpenDialog(options);
+
+                if (fileUri && fileUri[0]) {
+                    console.log('Selected file: ' + fileUri[0].fsPath);
+                    try {
+                        const fileContents = await vscode.workspace.fs.readFile(
+                            fileUri[0],
+                        );
+                        const petsToLoad = JSON.parse(
+                            String.fromCharCode.apply(
+                                null,
+                                Array.from(fileContents),
+                            ),
+                        );
+
+                        // load the pets into the collection
+                        var collection = PetSpecification.collectionFromMemento(
+                            context,
+                            getConfiguredSize(),
+                        );
+                        // fetch just the pet types
+                        const panel = getPetPanel();
+                        for (let i = 0; i < petsToLoad.length; i++) {
+                            const pet = petsToLoad[i];
+                            const petSpec = new PetSpecification(
+                                normalizeColor(pet.color, pet.type),
+                                pet.type,
+                                pet.size,
+                                pet.name,
+                            );
+                            collection.push(petSpec);
+                            if (panel !== undefined) {
+                                panel.spawnPet(petSpec);
+                            }
+                        }
+                        storeCollectionAsMemento(context, collection);
+                    } catch (e: any) {
+                        vscode.window.showErrorMessage(
+                            vscode.l10n.t(
+                                'Failed to import pets: {0}',
+                                e?.message,
+                            ),
+                        );
+                    }
+                }
+            },
+        ),
+    );
+
+    context.subscriptions.push(
         vscode.commands.registerCommand('vscode-pets.spawn-pet', async () => {
             const panel = getPetPanel();
             if (panel) {
@@ -407,89 +502,23 @@ export function activate(context: vscode.ExtensionContext) {
                     return;
                 }
                 var petColor: PetColor = DEFAULT_COLOR;
-                var choices;
-                switch (selectedPetType.value) {
-                    case PetType.rubberduck:
-                        petColor = PetColor.yellow;
-                        break;
-                    case PetType.snake:
-                        petColor = PetColor.green;
-                        break;
-                    case PetType.rocky:
-                    case PetType.totoro:
-                        petColor = PetColor.gray;
-                        break;
-                    case PetType.cat:
-                        choices = [
-                            PetColor.black,
-                            PetColor.brown,
-                            PetColor.white,
-                        ];
-                        var selectedColor = await vscode.window.showQuickPick(
-                            localize.stringListAsQuickPickItemList<PetColor>(
-                                choices,
-                            ),
-                            {
-                                placeHolder: vscode.l10n.t('Select a color'),
-                            },
-                        );
-                        if (selectedColor === undefined) {
-                            return;
-                        }
-                        petColor = selectedColor.value;
+                const possibleColors = availableColors(selectedPetType.value);
 
-                        break;
-                    case PetType.dog:
-                        choices = [
-                            PetColor.black,
-                            PetColor.brown,
-                            PetColor.white,
-                        ];
-                        var selectedColor = await vscode.window.showQuickPick(
-                            localize.stringListAsQuickPickItemList<PetColor>(
-                                choices,
-                            ),
-                            {
-                                placeHolder: vscode.l10n.t('Select a color'),
-                            },
-                        );
-                        if (selectedColor === undefined) {
-                            return;
-                        }
-                        petColor = selectedColor.value;
-                        break;
-                    case PetType.clippy:
-                        choices = [
-                            PetColor.black,
-                            PetColor.brown,
-                            PetColor.green,
-                            PetColor.yellow,
-                        ];
-                        var selectedColor = await vscode.window.showQuickPick(
-                            localize.stringListAsQuickPickItemList<PetColor>(
-                                choices,
-                            ),
-                            {
-                                placeHolder: vscode.l10n.t('Select a color'),
-                            },
-                        );
-                        if (selectedColor === undefined) {
-                            return;
-                        }
-                        petColor = selectedColor.value;
-                        break;
-                    case PetType.cockatiel:
-                        petColor = PetColor.gray;
-                        break;
-                    case PetType.crab:
-                        petColor = PetColor.red;
-                        break;
-                    case PetType.zappy:
-                        petColor = PetColor.yellow;
-                        break;
-                    case PetType.mod:
-                        petColor = PetColor.purple;
-                        break;
+                if (possibleColors.length > 1) {
+                    var selectedColor = await vscode.window.showQuickPick(
+                        localize.stringListAsQuickPickItemList<PetColor>(
+                            possibleColors,
+                        ),
+                        {
+                            placeHolder: vscode.l10n.t('Select a color'),
+                        },
+                    );
+                    if (selectedColor === undefined) {
+                        return;
+                    }
+                    petColor = selectedColor.value;
+                } else {
+                    petColor = possibleColors[0];
                 }
 
                 if (petColor === undefined) {
@@ -596,7 +625,6 @@ export function activate(context: vscode.ExtensionContext) {
                 PetPanel.revive(
                     webviewPanel,
                     context.extensionUri,
-                    context.extensionPath,
                     spec.color,
                     spec.type,
                     spec.size,
@@ -634,47 +662,6 @@ function getWebviewOptions(
     };
 }
 
-/**
- * Some pets can only have certain colors, this makes sure they haven't been misconfigured.
- * @param petColor
- * @param petType
- * @returns normalized color
- */
-function normalizeColor(petColor: PetColor, petType: PetType): PetColor {
-    if (petType === PetType.totoro || petType === PetType.rocky) {
-        return PetColor.gray;
-    }
-    if (petType === PetType.snake) {
-        return PetColor.green;
-    }
-    if (petType === PetType.rubberduck || petType === PetType.zappy) {
-        return PetColor.yellow;
-    }
-    if (petType === PetType.cockatiel) {
-        return PetColor.gray;
-    }
-    if (petType === PetType.crab) {
-        return PetColor.red;
-    }
-    if (
-        petType === PetType.dog &&
-        petColor !== PetColor.brown &&
-        petColor !== PetColor.white &&
-        petColor !== PetColor.black
-    ) {
-        return PetColor.brown;
-    }
-    if (
-        petType === PetType.cat &&
-        petColor !== PetColor.brown &&
-        petColor !== PetColor.black &&
-        petColor !== PetColor.white
-    ) {
-        return PetColor.brown;
-    }
-    return petColor;
-}
-
 interface IPetPanel {
     throwBall(): void;
     resetPets(): void;
@@ -695,7 +682,6 @@ interface IPetPanel {
 class PetWebviewContainer implements IPetPanel {
     protected _extensionUri: vscode.Uri;
     protected _disposables: vscode.Disposable[] = [];
-    protected _petMediaPath: string;
     protected _petColor: PetColor;
     protected _petType: PetType;
     protected _petSize: PetSize;
@@ -705,7 +691,6 @@ class PetWebviewContainer implements IPetPanel {
 
     constructor(
         extensionUri: vscode.Uri,
-        extensionPath: string,
         color: PetColor,
         type: PetType,
         size: PetSize,
@@ -714,7 +699,6 @@ class PetWebviewContainer implements IPetPanel {
         throwBallWithMouse: boolean,
     ) {
         this._extensionUri = extensionUri;
-        this._petMediaPath = path.join(extensionPath, 'media');
         this._petColor = color;
         this._petType = type;
         this._petSize = size;
@@ -853,7 +837,7 @@ class PetWebviewContainer implements IPetPanel {
 
         // Get path to resource on disk
         const basePetUri = webview.asWebviewUri(
-            vscode.Uri.file(path.join(this._petMediaPath)),
+            vscode.Uri.joinPath(this._extensionUri, 'media'),
         );
 
         // Use a nonce to only allow specific scripts to be run
@@ -921,7 +905,6 @@ class PetPanel extends PetWebviewContainer implements IPetPanel {
 
     public static createOrShow(
         extensionUri: vscode.Uri,
-        extensionPath: string,
         petColor: PetColor,
         petType: PetType,
         petSize: PetSize,
@@ -960,7 +943,6 @@ class PetPanel extends PetWebviewContainer implements IPetPanel {
         PetPanel.currentPanel = new PetPanel(
             panel,
             extensionUri,
-            extensionPath,
             petColor,
             petType,
             petSize,
@@ -989,7 +971,6 @@ class PetPanel extends PetWebviewContainer implements IPetPanel {
     public static revive(
         panel: vscode.WebviewPanel,
         extensionUri: vscode.Uri,
-        extensionPath: string,
         petColor: PetColor,
         petType: PetType,
         petSize: PetSize,
@@ -1000,7 +981,6 @@ class PetPanel extends PetWebviewContainer implements IPetPanel {
         PetPanel.currentPanel = new PetPanel(
             panel,
             extensionUri,
-            extensionPath,
             petColor,
             petType,
             petSize,
@@ -1013,7 +993,6 @@ class PetPanel extends PetWebviewContainer implements IPetPanel {
     private constructor(
         panel: vscode.WebviewPanel,
         extensionUri: vscode.Uri,
-        extensionPath: string,
         color: PetColor,
         type: PetType,
         size: PetSize,
@@ -1023,7 +1002,6 @@ class PetPanel extends PetWebviewContainer implements IPetPanel {
     ) {
         super(
             extensionUri,
-            extensionPath,
             color,
             type,
             size,
@@ -1132,7 +1110,6 @@ function createPetPlayground(context: vscode.ExtensionContext) {
     const spec = PetSpecification.fromConfiguration();
     PetPanel.createOrShow(
         context.extensionUri,
-        context.extensionPath,
         spec.color,
         spec.type,
         spec.size,

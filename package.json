@@ -2,7 +2,7 @@
     "name": "vscode-pets",
     "displayName": "vscode-pets",
     "description": "Pets for your VS Code",
-    "version": "1.19.0",
+    "version": "1.22.0",
     "engines": {
         "vscode": "^1.73.0"
     },
@@ -20,6 +20,7 @@
     "keywords": [
         "pet",
         "cat",
+        "chicken",
         "dog",
         "pets",
         "clippy",
@@ -35,6 +36,8 @@
         "onCommand:vscode-pets.delete-pet",
         "onCommand:vscode-pets.remove-all-pets",
         "onCommand:vscode-pets.roll-call",
+        "onCommand:vscode-pets.export-pet-list",
+        "onCommand:vscode-pets.import-pet-list",
         "onWebviewPanel:petCoding",
         "onView:explorer",
         "onView:petsView",
@@ -99,6 +102,16 @@
                 }
             },
             {
+                "command": "vscode-pets.export-pet-list",
+                "title": "Export pet list",
+                "category": "Pet Coding"
+            },
+            {
+                "command": "vscode-pets.import-pet-list",
+                "title": "Import pet list",
+                "category": "Pet Coding"
+            },
+            {
                 "command": "vscode-pets.spawn-pet",
                 "title": "Spawn additional pet",
                 "category": "Pet Coding",
@@ -138,6 +151,7 @@
                         "type": "string",
                         "enum": [
                             "black",
+                            "lightbrown",
                             "brown",
                             "green",
                             "yellow",
@@ -154,16 +168,19 @@
                         "type": "string",
                         "enum": [
                             "cat",
+                            "chicken",
                             "crab",
                             "clippy",
                             "cockatiel",
                             "dog",
+                            "fox",
                             "mod",
                             "rocky",
                             "rubber-duck",
                             "snake",
                             "totoro",
-                            "zappy"
+                            "zappy",
+                            "rat"
                         ],
                         "default": "cat",
                         "description": "Pet type",
@@ -173,6 +190,7 @@
                         "type": "string",
                         "enum": [
                             "nano",
+                            "small",
                             "medium",
                             "large"
                         ],
@@ -222,7 +240,8 @@
         "lint:fix": "eslint src --ext ts --fix && prettier --write src",
         "test": "node ./out/test/runTest.js",
         "test:coverage": "COVERAGE=1 node ./out/test/runTest.js",
-        "test:web": "vscode-test-web --browserType=chromium --extensionDevelopmentPath=. --extensionTestsPath=dist/web/test/suite/index.js"
+        "test:web": "vscode-test-web --browserType=chromium --extensionDevelopmentPath=. --extensionTestsPath=dist/web/test/suite/index.js",
+        "test:gifs": "node ./out/test/gifs.js"
     },
     "devDependencies": {
         "@rbarilani/remove-source-map-url-webpack-plugin": "^1.1.0",
@@ -250,7 +269,7 @@
         "typescript": "^4.7.4",
         "typescript-eslint": "^0.0.1-alpha.0",
         "vscode-test": "^1.4.0",
-        "webpack": "^5.73.0",
+        "webpack": "5.74.0",
         "webpack-cli": "^4.10.0"
     },
     "dependencies": {
